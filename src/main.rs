@@ -1,13 +1,13 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::Colorize;
-use rascal_light::smt::VerificationResult;
-use rascal_light::*;
+use rascal::smt::VerificationResult;
+use rascal::*;
 use std::fs;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "rascal-light")]
+#[command(name = "rascal")]
 #[command(about = "A verification-oriented Haskell-to-Rust transpiler", long_about = None)]
 #[command(version)]
 struct Cli {

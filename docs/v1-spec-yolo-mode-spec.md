@@ -1,4 +1,4 @@
-## Rascal-Light: Technical Specification & Implementation Roadmap
+## Rascal: Technical Specification & Implementation Roadmap
 
 ### Architecture Overview
 

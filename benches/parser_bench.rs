@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use rascal_light::*;
+use rascal::*;
 
 fn benchmark_parsing(c: &mut Criterion) {
     let small_source = r#"

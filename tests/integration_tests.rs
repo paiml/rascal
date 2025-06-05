@@ -1,4 +1,4 @@
-use rascal_light::*;
+use rascal::*;
 use std::io::Write;
 use tempfile::NamedTempFile;
 

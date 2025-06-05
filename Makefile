@@ -1,11 +1,11 @@
-# Rascal-Light Development Makefile
+# Rascal Development Makefile
 # Following Toyota Way principles: 自働化 (Jidoka), 現地現物 (Genchi Genbutsu), 改善 (Kaizen)
 
 .PHONY: help test lint validate build release clean install bench audit format clippy docs
 
 # Default target
 help:
-	@echo "🚀 Rascal-Light Development Commands"
+	@echo "🚀 Rascal Development Commands"
 	@echo ""
 	@echo "Quality Assurance (自働化 - Build Quality In):"
 	@echo "  test          Run all tests with coverage"
@@ -41,9 +41,9 @@ lint: format clippy
 validate: format clippy test audit
 	@echo "🔍 Running full validation pipeline..."
 	cargo build --release --all-features
-	./target/release/rascal-light --version
-	./target/release/rascal-light check examples/nat.rhl
-	./target/release/rascal-light transpile examples/nat.rhl
+	./target/release/rascal --version
+	./target/release/rascal check examples/nat.rhl
+	./target/release/rascal transpile examples/nat.rhl
 	@if [ -f examples/nat.rs ]; then \
 		echo "✅ CLI validation successful"; \
 		rm examples/nat.rs; \
@@ -82,7 +82,7 @@ profile:
 	@echo "📈 Profiling transpilation performance..."
 	cargo build --release
 	@echo "Profiling simple function transpilation..."
-	time -p ./target/release/rascal-light transpile examples/nat.rhl
+	time -p ./target/release/rascal transpile examples/nat.rhl
 	@if [ -f examples/nat.rs ]; then rm examples/nat.rs; fi
 
 # Development - 改善 (Kaizen)
@@ -92,10 +92,10 @@ build:
 	@echo "✅ Build successful"
 
 install: build
-	@echo "📦 Installing rascal-light locally..."
+	@echo "📦 Installing rascal locally..."
 	cargo install --path . --force
 	@echo "✅ Installed successfully"
-	@echo "Run: rascal-light --help"
+	@echo "Run: rascal --help"
 
 docs:
 	@echo "📚 Generating documentation..."
@@ -183,8 +183,8 @@ quality-metrics:
 	fi
 	@echo ""
 	@echo "Binary Size (release):"
-	@if [ -f target/release/rascal-light ]; then \
-		ls -lh target/release/rascal-light | awk '{print $$5}'; \
+	@if [ -f target/release/rascal ]; then \
+		ls -lh target/release/rascal | awk '{print $$5}'; \
 	else \
 		echo "Run 'make build' first"; \
 	fi

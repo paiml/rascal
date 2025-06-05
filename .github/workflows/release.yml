@@ -27,11 +27,11 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        release_name: Rascal-Light ${{ steps.get_version.outputs.version }}
+        release_name: Rascal ${{ steps.get_version.outputs.version }}
         body: |
           ## What's New in ${{ steps.get_version.outputs.version }}
 
-          **Rascal-Light** - A verification-oriented Haskell-to-Rust transpiler with proof-preserving translation of Liquid Haskell refinements.
+          **Rascal** - A verification-oriented Haskell-to-Rust transpiler with proof-preserving translation of Liquid Haskell refinements.
 
           ### ✨ Features
           - 🔍 **Verification-First**: Preserves Liquid Haskell refinement types through SMT encoding
@@ -51,20 +51,20 @@ jobs:
 
           **From Source:**
           ```bash
-          cargo install rascal-light
+          cargo install rascal
           ```
 
           ### 🚀 Quick Start
 
           ```bash
           # Check syntax
-          rascal-light check example.rhl
+          rascal check example.rhl
 
           # Transpile to Rust
-          rascal-light transpile example.rhl
+          rascal transpile example.rhl
 
           # Verify with refinements
-          rascal-light transpile --verify refinement example.rhl
+          rascal transpile --verify refinement example.rhl
           ```
 
           ### 📊 Performance Benchmarks
@@ -86,28 +86,28 @@ jobs:
         include:
         - os: ubuntu-latest
           target: x86_64-unknown-linux-gnu
-          binary_name: rascal-light
-          asset_name: rascal-light-linux-x86_64.tar.gz
+          binary_name: rascal
+          asset_name: rascal-linux-x86_64.tar.gz
 
         - os: ubuntu-latest
           target: aarch64-unknown-linux-gnu
-          binary_name: rascal-light
-          asset_name: rascal-light-linux-aarch64.tar.gz
+          binary_name: rascal
+          asset_name: rascal-linux-aarch64.tar.gz
 
         - os: macos-latest
           target: x86_64-apple-darwin
-          binary_name: rascal-light
-          asset_name: rascal-light-macos-x86_64.tar.gz
+          binary_name: rascal
+          asset_name: rascal-macos-x86_64.tar.gz
 
         - os: macos-latest
           target: aarch64-apple-darwin
-          binary_name: rascal-light
-          asset_name: rascal-light-macos-aarch64.tar.gz
+          binary_name: rascal
+          asset_name: rascal-macos-aarch64.tar.gz
 
         - os: windows-latest
           target: x86_64-pc-windows-msvc
-          binary_name: rascal-light.exe
-          asset_name: rascal-light-windows-x86_64.zip
+          binary_name: rascal.exe
+          asset_name: rascal-windows-x86_64.zip
 
     steps:
     - uses: actions/checkout@v4
@@ -194,7 +194,7 @@ jobs:
         #!/bin/bash
         set -e
 
-        # Rascal-Light installation script
+        # Rascal installation script
         # Usage: curl -sSfL https://github.com/${{ github.repository }}/releases/latest/download/install.sh | sh
 
         VERSION="${{ needs.create-release.outputs.version }}"
@@ -229,7 +229,7 @@ jobs:
         ARCHIVE="rascal-light-${PLATFORM}.tar.gz"
         URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
 
-        echo "Installing Rascal-Light ${VERSION} for ${PLATFORM}..."
+        echo "Installing Rascal ${VERSION} for ${PLATFORM}..."
 
         # Create install directory
         mkdir -p "$INSTALL_DIR"
@@ -242,7 +242,7 @@ jobs:
 
         # Verify installation
         if "$INSTALL_DIR/rascal-light" --version > /dev/null 2>&1; then
-            echo "✅ Rascal-Light installed successfully to $INSTALL_DIR/rascal-light"
+            echo "✅ Rascal installed successfully to $INSTALL_DIR/rascal"
             echo ""
             echo "Add to PATH with:"
             echo "    export PATH=\"$INSTALL_DIR:\$PATH\""

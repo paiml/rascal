@@ -1,5 +1,5 @@
-use rascal_light::hir::*;
-use rascal_light::parser::parse;
+use rascal::hir::*;
+use rascal::parser::parse;
 
 #[test]
 fn test_parse_simple_function() {

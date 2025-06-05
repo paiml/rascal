@@ -1,7 +1,7 @@
-# CLAUDE.md - Rascal-Light Development Guidelines
+# CLAUDE.md - Rascal Development Guidelines
 
 ## Project Context
-Rascal-Light is a verification-oriented Haskell-to-Rust transpiler focusing on proof-preserving translation of Liquid Haskell refinements to Prusti/Creusot specifications. The system must bridge the semantic gap between lazy pure functional code and eager imperative Rust while maintaining mathematical correctness guarantees.
+Rascal is a verification-oriented Haskell-to-Rust transpiler focusing on proof-preserving translation of Liquid Haskell refinements to Prusti/Creusot specifications. The system must bridge the semantic gap between lazy pure functional code and eager imperative Rust while maintaining mathematical correctness guarantees.
 
 ## Development Principles
 

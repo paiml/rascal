@@ -178,7 +178,7 @@ LOC=$(find src -name "*.rs" -exec wc -l {} + | tail -n 1 | awk '{print $1}')
 echo "    Source: $LOC lines"
 
 echo "  Binary Size:"
-BINARY_SIZE=$(ls -lh target/release/rascal-light | awk '{print $5}')
+BINARY_SIZE=$(ls -lh target/release/rascal | awk '{print $5}')
 echo "    Release binary: $BINARY_SIZE"
 
 echo "  Test Count:"

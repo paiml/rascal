@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Rascal-Light will be documented in this file.
+All notable changes to Rascal will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -69,12 +69,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Helpful suggestions and notes
 
 ### CLI Interface
-- **rascal-light transpile**: Convert Liquid Haskell to Rust
+- **rascal transpile**: Convert Liquid Haskell to Rust
   - Multiple verification levels (`--verify basic|refinement|total`)
   - Backend selection (`--backend prusti|creusot`)
   - Optimization control (`--no-optimize`)
-- **rascal-light verify**: Verify without code generation
-- **rascal-light check**: Syntax validation only
+- **rascal verify**: Verify without code generation
+- **rascal check**: Syntax validation only
 - **Comprehensive help**: `--help` with detailed usage examples
 
 ### Performance Achievements
@@ -115,5 +115,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **GADTs/Type Families**: Planned for v0.3  
 - **Complex SMT Encodings**: Some advanced refinements may timeout
 
-[Unreleased]: https://github.com/rascal-light/rascal-light/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/rascal-light/rascal-light/releases/tag/v0.1.0
+[Unreleased]: https://github.com/paiml/rascal/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/paiml/rascal/releases/tag/v0.1.0

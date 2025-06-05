@@ -1,11 +1,11 @@
 [package]
-name = "rascal-light"
+name = "rascal"
 version = "0.1.0"
 edition = "2021"
-authors = ["Rascal-Light Contributors"]
+authors = ["Rascal Contributors"]
 description = "A verification-oriented Haskell-to-Rust transpiler"
 license = "MIT"
-repository = "https://github.com/rascal-light/rascal-light"
+repository = "https://github.com/paiml/rascal"
 
 [dependencies]
 # Parser dependencies

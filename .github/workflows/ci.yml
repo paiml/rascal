@@ -59,9 +59,9 @@ jobs:
     - name: Test CLI functionality
       run: |
         cargo build --release
-        ./target/release/rascal-light --version
-        ./target/release/rascal-light check examples/nat.rhl
-        ./target/release/rascal-light transpile examples/nat.rhl
+        ./target/release/rascal --version
+        ./target/release/rascal check examples/nat.rhl
+        ./target/release/rascal transpile examples/nat.rhl
         test -f examples/nat.rs
 
   security:
