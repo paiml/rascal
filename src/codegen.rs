@@ -7,6 +7,7 @@ use std::fmt::Write;
 pub struct CodeGenerator {
     indent_level: usize,
     lifetime_counter: usize,
+    #[allow(dead_code)]
     generated_lifetimes: HashMap<String, String>,
 }
 
@@ -133,7 +134,7 @@ impl CodeGenerator {
                 ty,
                 value,
                 body,
-                linear,
+                linear: _,
             } => {
                 let mut out = String::new();
                 let ownership_kind = ownership.get(name).cloned().unwrap_or(OwnershipKind::Owned);

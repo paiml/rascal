@@ -399,6 +399,7 @@ impl Parser {
     }
 
     // Parse binary operation
+    #[allow(dead_code)]
     fn parse_binary_op<'a>(&mut self, input: &'a str) -> IResult<&'a str, HIR> {
         let (input, lhs) = self.parse_atom(input)?;
         let (input, _) = multispace0(input)?;

@@ -181,7 +181,7 @@ fn verify_command(input: PathBuf, level: VerificationLevel) -> Result<()> {
         output_path: None,
     };
 
-    let mut compiler = Compiler::new(options);
+    let mut _compiler = Compiler::new(options);
     let source = fs::read_to_string(&input).context("Failed to read input file")?;
 
     // Parse and verify without generating code

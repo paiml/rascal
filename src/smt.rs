@@ -87,9 +87,12 @@ impl<'ctx> SMTContext<'ctx> {
                 self.vars = saved_vars;
 
                 // Create quantified formula
+                let ast_vars: Vec<&dyn Ast> = bound_vars.iter()
+                    .map(|v| v as &dyn Ast)
+                    .collect();
                 forall_const(
                     self.ctx,
-                    &bound_vars.iter().collect::<Vec<_>>(),
+                    &ast_vars,
                     &[],
                     &body_enc,
                 )
@@ -110,9 +113,12 @@ impl<'ctx> SMTContext<'ctx> {
                 let body_enc = self.encode_smt_expr(body);
                 self.vars = saved_vars;
 
+                let ast_vars: Vec<&dyn Ast> = bound_vars.iter()
+                    .map(|v| v as &dyn Ast)
+                    .collect();
                 exists_const(
                     self.ctx,
-                    &bound_vars.iter().collect::<Vec<_>>(),
+                    &ast_vars,
                     &[],
                     &body_enc,
                 )
@@ -251,7 +257,7 @@ impl<'ctx> SMTContext<'ctx> {
                 }
             }
             HIR::Let {
-                name, value, body, ..
+                body, ..
             } => {
                 // Evaluate value and bind to name
                 // For now, just process body

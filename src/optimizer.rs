@@ -9,6 +9,7 @@ pub struct OptimizationPass {
 
 #[derive(Clone)]
 pub struct FusionRule {
+    #[allow(dead_code)]
     name: String,
     matcher: fn(&HIR) -> Option<HIR>,
 }
@@ -417,7 +418,7 @@ impl OptimizationPass {
             HIR::App { func, args } if matches!(func.as_ref(), HIR::Var(name) if name == func_name) =>
             {
                 // TODO: Transform to loop
-                HIR::App { func: func, args }
+                HIR::App { func, args }
             }
             // Tail call in match arm
             HIR::Match {
