@@ -1,5 +1,5 @@
-use rascal_light::parser::parse;
 use rascal_light::hir::*;
+use rascal_light::parser::parse;
 
 #[test]
 fn test_parse_simple_function() {
@@ -7,13 +7,13 @@ fn test_parse_simple_function() {
         add :: Int -> Int -> Int
         add x y = x + y
     "#;
-    
+
     let result = parse(source);
     assert!(result.is_ok());
-    
+
     let functions = result.unwrap();
     assert_eq!(functions.len(), 1);
-    
+
     match &functions[0] {
         HIR::Function { name, params, .. } => {
             assert_eq!(name.0, "add");
@@ -31,10 +31,10 @@ fn test_parse_refined_type() {
         add :: Int -> Int -> Int
         add x y = x + y
     "#;
-    
+
     let result = parse(source);
     assert!(result.is_ok());
-    
+
     let functions = result.unwrap();
     assert_eq!(functions.len(), 1);
 }
@@ -47,7 +47,7 @@ fn test_parse_pattern_match() {
             Empty -> True
             _ -> False
     "#;
-    
+
     let result = parse(source);
     // Parser implementation needs pattern matching support
     // For now, this test documents expected behavior

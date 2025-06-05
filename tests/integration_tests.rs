@@ -1,6 +1,6 @@
 use rascal_light::*;
-use tempfile::NamedTempFile;
 use std::io::Write;
+use tempfile::NamedTempFile;
 
 #[test]
 fn test_full_pipeline() {
@@ -10,10 +10,10 @@ fn test_full_pipeline() {
         add :: Int -> Int -> Int
         add x y = x + y
     "#;
-    
+
     let result = transpile(source);
     assert!(result.is_ok());
-    
+
     let rust_code = result.unwrap();
     assert!(rust_code.contains("pub fn add"));
     assert!(rust_code.contains("x + y"));
@@ -31,10 +31,10 @@ fn test_multiple_functions() {
         sign x = case x of
             _ -> 1
     "#;
-    
+
     let result = parse(source);
     assert!(result.is_ok());
-    
+
     let functions = result.unwrap();
     assert_eq!(functions.len(), 2);
 }
@@ -45,10 +45,10 @@ fn test_ownership_inference() {
         identity :: Int -> Int
         identity x = x
     "#;
-    
+
     let functions = parse(source).unwrap();
     assert_eq!(functions.len(), 1);
-    
+
     if let HIR::Function { params, .. } = &functions[0] {
         assert_eq!(params.len(), 1);
         // Basic ownership should be inferred
@@ -61,37 +61,41 @@ fn test_error_handling() {
     let invalid_source = r#"
         this is not valid liquid haskell
     "#;
-    
+
     let result = parse(invalid_source);
     assert!(result.is_err());
 }
 
 #[test]
 fn test_cli_integration() {
-    use std::process::Command;
     use std::fs;
-    
+    use std::process::Command;
+
     // Create a temporary file
     let mut temp_file = NamedTempFile::new().unwrap();
-    writeln!(temp_file, r#"
+    writeln!(
+        temp_file,
+        r#"
         double :: Int -> Int
         double x = x + x
-    "#).unwrap();
-    
+    "#
+    )
+    .unwrap();
+
     let input_path = temp_file.path();
     let output_path = input_path.with_extension("rs");
-    
+
     // Run the CLI
     let output = Command::new("cargo")
         .args(&["run", "--", "transpile", input_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute command");
-    
+
     assert!(output.status.success());
-    
+
     // Check output file was created
     assert!(output_path.exists());
-    
+
     // Clean up
     let _ = fs::remove_file(output_path);
 }
@@ -102,14 +106,14 @@ fn test_verification_levels() {
         id :: Int -> Int
         id x = x
     "#;
-    
+
     // Test different verification levels
     let basic = transpile_with_verification(source, VerificationLevel::Basic);
     assert!(basic.is_ok());
-    
+
     let refinement = transpile_with_verification(source, VerificationLevel::Refinement);
     assert!(refinement.is_ok());
-    
+
     // Total verification might fail without SMT backend, but should handle gracefully
     let total = transpile_with_verification(source, VerificationLevel::Total);
     assert!(total.is_ok()); // Should work with stub implementation
@@ -121,7 +125,7 @@ fn test_optimization_pipeline() {
         compose :: (Int -> Int) -> (Int -> Int) -> Int -> Int
         compose f g x = f (g x)
     "#;
-    
+
     // Test with optimization enabled
     let mut compiler = Compiler::new(CompilerOptions {
         verify: VerificationLevel::None,
@@ -129,7 +133,7 @@ fn test_optimization_pipeline() {
         backend: "prusti".to_string(),
         output_path: None,
     });
-    
+
     let result = compiler.compile_string(source, "test.rhl".to_string());
     assert!(result.is_ok());
 }
@@ -142,10 +146,10 @@ fn test_type_annotations() {
         increment :: Int -> Int
         increment x = x + 1
     "#;
-    
+
     let result = parse(source);
     assert!(result.is_ok());
-    
+
     let functions = result.unwrap();
     assert_eq!(functions.len(), 1);
 }
@@ -157,10 +161,10 @@ fn test_roundtrip_parsing() {
         factorial n = case n of
             _ -> 1
     "#;
-    
+
     let parsed = parse(source).unwrap();
     assert!(!parsed.is_empty());
-    
+
     // Should be able to generate code from parsed HIR
     let rust_code = codegen::generate_module(&parsed, &std::collections::HashMap::new()).unwrap();
     assert!(rust_code.contains("factorial"));
@@ -173,10 +177,10 @@ fn test_memory_safety() {
         clone_value :: Int -> Int
         clone_value x = x
     "#;
-    
+
     let result = transpile(source);
     assert!(result.is_ok());
-    
+
     let rust_code = result.unwrap();
     // Should generate safe borrowing patterns
     assert!(rust_code.contains("&") || rust_code.contains("i32"));
@@ -187,42 +191,45 @@ fn test_large_input() {
     // Test performance with larger input
     let mut source = String::new();
     source.push_str("module LargeTest where\n");
-    
+
     for i in 0..100 {
         source.push_str(&format!(
             "func{} :: Int -> Int\nfunc{} x = x + {}\n\n",
             i, i, i
         ));
     }
-    
+
     let start = std::time::Instant::now();
     let result = parse(&source);
     let duration = start.elapsed();
-    
+
     assert!(result.is_ok());
     assert!(duration.as_millis() < 1000); // Should complete within 1 second
-    
+
     let functions = result.unwrap();
     assert_eq!(functions.len(), 100);
 }
 
 #[test]
 fn test_concurrent_compilation() {
-    use std::thread;
     use std::sync::Arc;
-    
-    let source = Arc::new(r#"
+    use std::thread;
+
+    let source = Arc::new(
+        r#"
         simple :: Int -> Int
         simple x = x
-    "#.to_string());
-    
-    let handles: Vec<_> = (0..4).map(|_| {
-        let source_clone = source.clone();
-        thread::spawn(move || {
-            transpile(&source_clone)
+    "#
+        .to_string(),
+    );
+
+    let handles: Vec<_> = (0..4)
+        .map(|_| {
+            let source_clone = source.clone();
+            thread::spawn(move || transpile(&source_clone))
         })
-    }).collect();
-    
+        .collect();
+
     for handle in handles {
         let result = handle.join().unwrap();
         assert!(result.is_ok());
@@ -235,11 +242,11 @@ fn test_edge_cases() {
     let empty_result = parse("");
     assert!(empty_result.is_ok());
     assert!(empty_result.unwrap().is_empty());
-    
+
     // Whitespace only
     let whitespace_result = parse("   \n  \t  \n");
     assert!(whitespace_result.is_ok());
-    
+
     // Single character
     let single_char = parse("x");
     assert!(single_char.is_err());
@@ -249,11 +256,11 @@ fn test_edge_cases() {
 fn test_error_recovery() {
     // Test that parser can provide meaningful error messages
     let invalid_sources = vec![
-        "add :: Int ->",  // Incomplete type signature
-        "add x y =",      // Incomplete function definition
+        "add :: Int ->",                       // Incomplete type signature
+        "add x y =",                           // Incomplete function definition
         "add :: Int -> Int -> Int\nadd x = x", // Mismatched arity
     ];
-    
+
     for source in invalid_sources {
         let result = parse(source);
         assert!(result.is_err());
@@ -269,7 +276,7 @@ fn test_backend_selection() {
         test :: Int -> Int
         test x = x
     "#;
-    
+
     // Test Prusti backend
     let mut compiler_prusti = Compiler::new(CompilerOptions {
         verify: VerificationLevel::Basic,
@@ -277,10 +284,10 @@ fn test_backend_selection() {
         backend: "prusti".to_string(),
         output_path: None,
     });
-    
+
     let result_prusti = compiler_prusti.compile_string(source, "test.rhl".to_string());
     assert!(result_prusti.is_ok());
-    
+
     // Test Creusot backend
     let mut compiler_creusot = Compiler::new(CompilerOptions {
         verify: VerificationLevel::Basic,
@@ -288,7 +295,7 @@ fn test_backend_selection() {
         backend: "creusot".to_string(),
         output_path: None,
     });
-    
+
     let result_creusot = compiler_creusot.compile_string(source, "test.rhl".to_string());
     assert!(result_creusot.is_ok());
 }
@@ -302,15 +309,15 @@ fn test_property_preservation() {
         divide :: Int -> Int -> Int
         divide x y = x
     "#;
-    
+
     let functions = parse(source).unwrap();
     assert_eq!(functions.len(), 1);
-    
+
     // Check that function has appropriate type constraints
     if let HIR::Function { params, .. } = &functions[0] {
         assert_eq!(params.len(), 2);
         // Second parameter should have refinement constraint
-        assert!(params[1].1.refinement.is_some() || 
-                params[1].1.base != BaseType::Int); // Either refined or alias type
+        assert!(params[1].1.refinement.is_some() || params[1].1.base != BaseType::Int);
+        // Either refined or alias type
     }
 }

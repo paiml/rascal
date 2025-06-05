@@ -1,7 +1,7 @@
-use std::fmt::Write;
 use crate::hir::*;
 use crate::smt::VerificationResult;
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
+use std::fmt::Write;
 
 pub trait VerificationBackend {
     fn generate_spec(&self, hir: &HIR) -> String;
@@ -30,24 +30,29 @@ pub struct PrustiBackend;
 impl VerificationBackend for PrustiBackend {
     fn generate_spec(&self, hir: &HIR) -> String {
         match hir {
-            HIR::Function { pre, post, decreases, .. } => {
+            HIR::Function {
+                pre,
+                post,
+                decreases,
+                ..
+            } => {
                 let mut spec = String::new();
-                
+
                 // Preconditions
                 for p in pre {
                     writeln!(spec, "#[requires({})]", self.pred_to_prusti(p)).unwrap();
                 }
-                
+
                 // Postconditions
                 for p in post {
                     writeln!(spec, "#[ensures({})]", self.pred_to_prusti(p)).unwrap();
                 }
-                
+
                 // Termination
                 if let Some(measure) = decreases {
                     writeln!(spec, "#[decreases({})]", self.measure_to_prusti(measure)).unwrap();
                 }
-                
+
                 spec
             }
             _ => String::new(),
@@ -56,9 +61,15 @@ impl VerificationBackend for PrustiBackend {
 
     fn generate_proof_obligations(&self, hir: &HIR) -> Vec<ProofObligation> {
         let mut obligations = Vec::new();
-        
+
         match hir {
-            HIR::Function { name, pre, post, decreases, .. } => {
+            HIR::Function {
+                name,
+                pre,
+                post,
+                decreases,
+                ..
+            } => {
                 // Precondition obligations
                 for (i, pred) in pre.iter().enumerate() {
                     obligations.push(ProofObligation {
@@ -67,7 +78,7 @@ impl VerificationBackend for PrustiBackend {
                         condition: self.pred_to_prusti(pred),
                     });
                 }
-                
+
                 // Postcondition obligations
                 for (i, pred) in post.iter().enumerate() {
                     obligations.push(ProofObligation {
@@ -76,7 +87,7 @@ impl VerificationBackend for PrustiBackend {
                         condition: self.pred_to_prusti(pred),
                     });
                 }
-                
+
                 // Termination obligation
                 if let Some(measure) = decreases {
                     obligations.push(ProofObligation {
@@ -88,7 +99,7 @@ impl VerificationBackend for PrustiBackend {
             }
             _ => {}
         }
-        
+
         obligations
     }
 
@@ -96,8 +107,10 @@ impl VerificationBackend for PrustiBackend {
         match result {
             VerificationResult::Verified => "✓ Verified".to_string(),
             VerificationResult::CounterExample(ce) => {
-                format!("✗ Counterexample found:\n  Failing condition: {}\n  Model: {:?}",
-                    ce.failing_condition, ce.model)
+                format!(
+                    "✗ Counterexample found:\n  Failing condition: {}\n  Model: {:?}",
+                    ce.failing_condition, ce.model
+                )
             }
             VerificationResult::Timeout => "⏱ Verification timeout".to_string(),
             VerificationResult::Unknown(msg) => format!("? Unknown: {}", msg),
@@ -122,9 +135,11 @@ impl PrustiBackend {
             }
             _ => {
                 // Generic predicate
-                format!("{}({})", 
+                format!(
+                    "{}({})",
                     pred.name.0,
-                    pred.args.iter()
+                    pred.args
+                        .iter()
                         .map(|arg| self.smt_to_prusti(arg))
                         .collect::<Vec<_>>()
                         .join(", ")
@@ -147,7 +162,8 @@ impl PrustiBackend {
                 Literal::Unit => "()".to_string(),
             },
             SMTExpr::App(func, args) => {
-                format!("{}({})",
+                format!(
+                    "{}({})",
                     func.0,
                     args.iter()
                         .map(|arg| self.smt_to_prusti(arg))
@@ -156,7 +172,8 @@ impl PrustiBackend {
                 )
             }
             SMTExpr::Comparison { op, lhs, rhs } => {
-                format!("{} {} {}",
+                format!(
+                    "{} {} {}",
                     self.smt_to_prusti(lhs),
                     match op {
                         CompOp::Eq => "==",
@@ -173,8 +190,10 @@ impl PrustiBackend {
                 if exprs.is_empty() {
                     "true".to_string()
                 } else {
-                    format!("({})",
-                        exprs.iter()
+                    format!(
+                        "({})",
+                        exprs
+                            .iter()
                             .map(|e| self.smt_to_prusti(e))
                             .collect::<Vec<_>>()
                             .join(" && ")
@@ -185,8 +204,10 @@ impl PrustiBackend {
                 if exprs.is_empty() {
                     "false".to_string()
                 } else {
-                    format!("({})",
-                        exprs.iter()
+                    format!(
+                        "({})",
+                        exprs
+                            .iter()
                             .map(|e| self.smt_to_prusti(e))
                             .collect::<Vec<_>>()
                             .join(" || ")
@@ -197,17 +218,23 @@ impl PrustiBackend {
                 format!("!({})", self.smt_to_prusti(expr))
             }
             SMTExpr::Implies(p, q) => {
-                format!("({}) ==> ({})", self.smt_to_prusti(p), self.smt_to_prusti(q))
+                format!(
+                    "({}) ==> ({})",
+                    self.smt_to_prusti(p),
+                    self.smt_to_prusti(q)
+                )
             }
             SMTExpr::Forall(vars, body) => {
-                let var_list = vars.iter()
+                let var_list = vars
+                    .iter()
                     .map(|(name, _)| name.0.clone())
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("forall(|{}| {})", var_list, self.smt_to_prusti(body))
             }
             SMTExpr::Exists(vars, body) => {
-                let var_list = vars.iter()
+                let var_list = vars
+                    .iter()
                     .map(|(name, _)| name.0.clone())
                     .collect::<Vec<_>>()
                     .join(", ");
@@ -222,27 +249,32 @@ pub struct CreusotBackend;
 impl VerificationBackend for CreusotBackend {
     fn generate_spec(&self, hir: &HIR) -> String {
         match hir {
-            HIR::Function { pre, post, decreases, .. } => {
+            HIR::Function {
+                pre,
+                post,
+                decreases,
+                ..
+            } => {
                 let mut spec = String::new();
-                
+
                 // Use Creusot's annotation style
                 writeln!(spec, "#[logic]").unwrap();
-                
+
                 // Preconditions
                 for p in pre {
                     writeln!(spec, "#[requires({})]", self.pred_to_creusot(p)).unwrap();
                 }
-                
+
                 // Postconditions
                 for p in post {
                     writeln!(spec, "#[ensures({})]", self.pred_to_creusot(p)).unwrap();
                 }
-                
+
                 // Variant for termination
                 if let Some(measure) = decreases {
                     writeln!(spec, "#[variant({})]", self.measure_to_creusot(measure)).unwrap();
                 }
-                
+
                 spec
             }
             _ => String::new(),
@@ -297,35 +329,29 @@ mod tests {
                 lhs: Box::new(HIR::Var(Symbol("x".to_string()))),
                 rhs: Box::new(HIR::Var(Symbol("y".to_string()))),
             }),
-            pre: vec![
-                Predicate {
-                    name: Symbol("geq".to_string()),
-                    args: vec![
+            pre: vec![Predicate {
+                name: Symbol("geq".to_string()),
+                args: vec![
+                    SMTExpr::Var(Symbol("x".to_string())),
+                    SMTExpr::Const(Literal::Int(0)),
+                ],
+            }],
+            post: vec![Predicate {
+                name: Symbol("result_eq".to_string()),
+                args: vec![SMTExpr::App(
+                    Symbol("+".to_string()),
+                    vec![
                         SMTExpr::Var(Symbol("x".to_string())),
-                        SMTExpr::Const(Literal::Int(0)),
+                        SMTExpr::Var(Symbol("y".to_string())),
                     ],
-                },
-            ],
-            post: vec![
-                Predicate {
-                    name: Symbol("result_eq".to_string()),
-                    args: vec![
-                        SMTExpr::App(
-                            Symbol("+".to_string()),
-                            vec![
-                                SMTExpr::Var(Symbol("x".to_string())),
-                                SMTExpr::Var(Symbol("y".to_string())),
-                            ],
-                        ),
-                    ],
-                },
-            ],
+                )],
+            }],
             decreases: None,
         };
 
         let backend = PrustiBackend;
         let spec = backend.generate_spec(&func);
-        
+
         assert!(spec.contains("#[requires("));
         assert!(spec.contains("#[ensures("));
     }

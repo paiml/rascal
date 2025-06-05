@@ -123,10 +123,10 @@ pub enum Sort {
 
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum OwnershipKind {
-    Owned,           // T
-    Borrowed,        // &T
-    MutBorrowed,     // &mut T
-    Shared(usize),   // Rc<T> with refcount hint
+    Owned,         // T
+    Borrowed,      // &T
+    MutBorrowed,   // &mut T
+    Shared(usize), // Rc<T> with refcount hint
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -213,28 +213,37 @@ impl RefinedType {
             BaseType::String => "String".to_string(),
             BaseType::Unit => "()".to_string(),
             BaseType::Function(from, to) => {
-                format!("Box<dyn Fn({}) -> {}>", 
-                    from.to_rust_str(), to.to_rust_str())
+                format!(
+                    "Box<dyn Fn({}) -> {}>",
+                    from.to_rust_str(),
+                    to.to_rust_str()
+                )
             }
             BaseType::Constructor(name, args) => {
                 if args.is_empty() {
                     name.0.clone()
                 } else {
-                    format!("{}<{}>", name.0, 
+                    format!(
+                        "{}<{}>",
+                        name.0,
                         args.iter()
                             .map(|t| t.to_rust_str())
                             .collect::<Vec<_>>()
-                            .join(", "))
+                            .join(", ")
+                    )
                 }
             }
             BaseType::TypeVar(name) => name.0.clone(),
             BaseType::List(inner) => format!("Vec<{}>", inner.to_rust_str()),
             BaseType::Tuple(types) => {
-                format!("({})", 
-                    types.iter()
+                format!(
+                    "({})",
+                    types
+                        .iter()
                         .map(|t| t.to_rust_str())
                         .collect::<Vec<_>>()
-                        .join(", "))
+                        .join(", ")
+                )
             }
         };
 
@@ -259,11 +268,14 @@ impl BaseType {
             BaseType::TypeVar(name) => name.0.clone(),
             BaseType::List(inner) => format!("Vec<{}>", inner.to_rust_str()),
             BaseType::Tuple(types) => {
-                format!("({})", 
-                    types.iter()
+                format!(
+                    "({})",
+                    types
+                        .iter()
                         .map(|t| t.to_rust_str())
                         .collect::<Vec<_>>()
-                        .join(", "))
+                        .join(", ")
+                )
             }
         }
     }

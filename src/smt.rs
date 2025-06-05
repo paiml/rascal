@@ -1,7 +1,7 @@
-use z3::{ast::*, Config, Context, Solver, SatResult, Model};
-use std::collections::HashMap;
 use crate::hir::*;
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
+use std::collections::HashMap;
+use z3::{ast::*, Config, Context, Model, SatResult, Solver};
 
 pub struct SMTContext<'ctx> {
     ctx: &'ctx Context,
@@ -52,20 +52,14 @@ impl<'ctx> SMTContext<'ctx> {
                 self.encode_comparison(op, l, r)
             }
             SMTExpr::And(exprs) => {
-                let encoded: Vec<_> = exprs.iter()
-                    .map(|e| self.encode_smt_expr(e))
-                    .collect();
+                let encoded: Vec<_> = exprs.iter().map(|e| self.encode_smt_expr(e)).collect();
                 Bool::and(self.ctx, &encoded.iter().collect::<Vec<_>>())
             }
             SMTExpr::Or(exprs) => {
-                let encoded: Vec<_> = exprs.iter()
-                    .map(|e| self.encode_smt_expr(e))
-                    .collect();
+                let encoded: Vec<_> = exprs.iter().map(|e| self.encode_smt_expr(e)).collect();
                 Bool::or(self.ctx, &encoded.iter().collect::<Vec<_>>())
             }
-            SMTExpr::Not(expr) => {
-                self.encode_smt_expr(expr).not()
-            }
+            SMTExpr::Not(expr) => self.encode_smt_expr(expr).not(),
             SMTExpr::Implies(p, q) => {
                 let p_enc = self.encode_smt_expr(p);
                 let q_enc = self.encode_smt_expr(q);
@@ -73,43 +67,55 @@ impl<'ctx> SMTContext<'ctx> {
             }
             SMTExpr::Forall(vars, body) => {
                 // Create bound variables
-                let bound_vars: Vec<Dynamic> = vars.iter()
+                let bound_vars: Vec<Dynamic> = vars
+                    .iter()
                     .map(|(name, sort)| self.create_var_of_sort(name, sort))
                     .collect();
-                
+
                 // Save current variable bindings
                 let saved_vars = self.vars.clone();
-                
+
                 // Add bound variables to context
                 for ((name, _), var) in vars.iter().zip(&bound_vars) {
                     self.vars.insert(name.clone(), var.clone());
                 }
-                
+
                 // Encode body
                 let body_enc = self.encode_smt_expr(body);
-                
+
                 // Restore variable bindings
                 self.vars = saved_vars;
-                
+
                 // Create quantified formula
-                forall_const(self.ctx, &bound_vars.iter().collect::<Vec<_>>(), &[], &body_enc)
+                forall_const(
+                    self.ctx,
+                    &bound_vars.iter().collect::<Vec<_>>(),
+                    &[],
+                    &body_enc,
+                )
             }
             SMTExpr::Exists(vars, body) => {
                 // Similar to Forall but with exists
-                let bound_vars: Vec<Dynamic> = vars.iter()
+                let bound_vars: Vec<Dynamic> = vars
+                    .iter()
                     .map(|(name, sort)| self.create_var_of_sort(name, sort))
                     .collect();
-                
+
                 let saved_vars = self.vars.clone();
-                
+
                 for ((name, _), var) in vars.iter().zip(&bound_vars) {
                     self.vars.insert(name.clone(), var.clone());
                 }
-                
+
                 let body_enc = self.encode_smt_expr(body);
                 self.vars = saved_vars;
-                
-                exists_const(self.ctx, &bound_vars.iter().collect::<Vec<_>>(), &[], &body_enc)
+
+                exists_const(
+                    self.ctx,
+                    &bound_vars.iter().collect::<Vec<_>>(),
+                    &[],
+                    &body_enc,
+                )
             }
             _ => Bool::from_bool(self.ctx, true), // TODO: Handle other cases
         }
@@ -126,24 +132,24 @@ impl<'ctx> SMTContext<'ctx> {
                     dyn_var
                 })
             }
-            SMTExpr::Const(lit) => {
-                match lit {
-                    Literal::Int(n) => Dynamic::from_ast(&Int::from_i64(self.ctx, *n)),
-                    Literal::Bool(b) => Dynamic::from_ast(&Bool::from_bool(self.ctx, *b)),
-                    _ => panic!("Unsupported literal type in SMT"),
-                }
-            }
+            SMTExpr::Const(lit) => match lit {
+                Literal::Int(n) => Dynamic::from_ast(&Int::from_i64(self.ctx, *n)),
+                Literal::Bool(b) => Dynamic::from_ast(&Bool::from_bool(self.ctx, *b)),
+                _ => panic!("Unsupported literal type in SMT"),
+            },
             SMTExpr::App(func, args) => {
                 // Handle function application
                 match func.0.as_str() {
                     "+" => {
-                        let args: Vec<_> = args.iter()
+                        let args: Vec<_> = args
+                            .iter()
                             .map(|a| self.encode_smt_value(a).as_int().unwrap())
                             .collect();
                         Dynamic::from_ast(&Int::add(self.ctx, &args.iter().collect::<Vec<_>>()))
                     }
                     "-" => {
-                        let args: Vec<_> = args.iter()
+                        let args: Vec<_> = args
+                            .iter()
                             .map(|a| self.encode_smt_value(a).as_int().unwrap())
                             .collect();
                         if args.len() == 2 {
@@ -153,7 +159,8 @@ impl<'ctx> SMTContext<'ctx> {
                         }
                     }
                     "*" => {
-                        let args: Vec<_> = args.iter()
+                        let args: Vec<_> = args
+                            .iter()
                             .map(|a| self.encode_smt_value(a).as_int().unwrap())
                             .collect();
                         Dynamic::from_ast(&Int::mul(self.ctx, &args.iter().collect::<Vec<_>>()))
@@ -169,7 +176,7 @@ impl<'ctx> SMTContext<'ctx> {
         // Assume integer comparison for now
         let l = lhs.as_int().expect("Expected integer in comparison");
         let r = rhs.as_int().expect("Expected integer in comparison");
-        
+
         match op {
             CompOp::Eq => l._eq(&r),
             CompOp::Neq => l._eq(&r).not(),
@@ -243,7 +250,9 @@ impl<'ctx> SMTContext<'ctx> {
                     _ => Bool::from_bool(self.ctx, true), // TODO: Handle arithmetic ops
                 }
             }
-            HIR::Let { name, value, body, .. } => {
+            HIR::Let {
+                name, value, body, ..
+            } => {
                 // Evaluate value and bind to name
                 // For now, just process body
                 self.encode_hir(body)
@@ -280,22 +289,24 @@ impl<'ctx> SMTContext<'ctx> {
 
     pub fn verify_function(&mut self, func: &HIR) -> VerificationResult {
         match func {
-            HIR::Function { pre, post, body, .. } => {
+            HIR::Function {
+                pre, post, body, ..
+            } => {
                 // Encode preconditions
                 for pred in pre {
                     let enc = self.encode_predicate(pred);
                     self.solver.assert(&enc);
                 }
-                
+
                 // Encode function body (simplified for now)
                 let _body_constraint = self.encode_hir(body);
-                
+
                 // Check postconditions
                 for pred in post {
                     let post_encoded = self.encode_predicate(pred);
                     self.solver.push();
                     self.solver.assert(&post_encoded.not());
-                    
+
                     match self.solver.check() {
                         SatResult::Unsat => {
                             self.solver.pop(1);
@@ -305,18 +316,18 @@ impl<'ctx> SMTContext<'ctx> {
                             let model = self.solver.get_model().unwrap();
                             self.solver.pop(1);
                             return VerificationResult::CounterExample(
-                                self.extract_counter_example(&model, &pred.name.0)
+                                self.extract_counter_example(&model, &pred.name.0),
                             );
                         }
                         SatResult::Unknown => {
                             self.solver.pop(1);
                             return VerificationResult::Unknown(
-                                "SMT solver returned unknown".to_string()
+                                "SMT solver returned unknown".to_string(),
                             );
                         }
                     }
                 }
-                
+
                 VerificationResult::Verified
             }
             _ => VerificationResult::Unknown("Not a function".to_string()),
@@ -325,14 +336,14 @@ impl<'ctx> SMTContext<'ctx> {
 
     fn extract_counter_example(&self, model: &Model, failing_pred: &str) -> CounterExample {
         let mut model_map = HashMap::new();
-        
+
         // Extract variable assignments from model
         for (sym, var) in &self.vars {
             if let Some(interp) = model.get_const_interp(var) {
                 model_map.insert(sym.0.clone(), format!("{}", interp));
             }
         }
-        
+
         CounterExample {
             model: model_map,
             failing_condition: failing_pred.to_string(),
@@ -361,7 +372,7 @@ pub fn verify_hir(hir: &HIR) -> Result<VerificationResult> {
     let cfg = Config::new();
     let ctx = Context::new(&cfg);
     let mut smt = SMTContext::new(&ctx);
-    
+
     Ok(smt.verify_function(hir))
 }
 
@@ -369,10 +380,10 @@ pub fn check_refinement_satisfiability(ty: &RefinedType) -> Result<bool> {
     let cfg = Config::new();
     let ctx = Context::new(&cfg);
     let mut smt = SMTContext::new(&ctx);
-    
+
     let constraint = smt.encode_refinement(ty);
     smt.add_assertion(constraint);
-    
+
     match smt.check_satisfiability() {
         SatResult::Sat => Ok(true),
         SatResult::Unsat => Ok(false),
@@ -386,14 +397,12 @@ mod tests {
 
     #[test]
     fn test_simple_refinement() {
-        let ty = RefinedType::new(BaseType::Int).with_refinement(
-            SMTExpr::Comparison {
-                op: CompOp::Geq,
-                lhs: Box::new(SMTExpr::Var(Symbol("v".to_string()))),
-                rhs: Box::new(SMTExpr::Const(Literal::Int(0))),
-            }
-        );
-        
+        let ty = RefinedType::new(BaseType::Int).with_refinement(SMTExpr::Comparison {
+            op: CompOp::Geq,
+            lhs: Box::new(SMTExpr::Var(Symbol("v".to_string()))),
+            rhs: Box::new(SMTExpr::Const(Literal::Int(0))),
+        });
+
         let result = check_refinement_satisfiability(&ty).unwrap();
         assert!(result); // Should be satisfiable (there exist non-negative integers)
     }

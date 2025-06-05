@@ -1,6 +1,6 @@
-use std::fmt::Write;
-use colored::Colorize;
 use crate::smt::VerificationTrace;
+use colored::Colorize;
+use std::fmt::Write;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Level {
@@ -77,7 +77,7 @@ impl Diagnostic {
 
     pub fn render(&self, source: &str) -> String {
         let mut output = String::new();
-        
+
         // Main error message
         let level_str = match self.level {
             Level::Error => "error".red().bold(),
@@ -85,19 +85,23 @@ impl Diagnostic {
             Level::Info => "info".blue().bold(),
             Level::Help => "help".green().bold(),
         };
-        
+
         writeln!(output, "{}: {}", level_str, self.message.bold()).unwrap();
-        
+
         // Location
-        writeln!(output, "  {} {}:{}:{}", 
-                 "-->".blue().bold(),
-                 self.span.file, 
-                 self.span.line, 
-                 self.span.col).unwrap();
-        
+        writeln!(
+            output,
+            "  {} {}:{}:{}",
+            "-->".blue().bold(),
+            self.span.file,
+            self.span.line,
+            self.span.col
+        )
+        .unwrap();
+
         // Source snippet with highlighting
         self.render_snippet(&mut output, source, &self.span);
-        
+
         // Notes
         for note in &self.notes {
             writeln!(output, "  {} note: {}", "=".blue().bold(), note.message).unwrap();
@@ -105,7 +109,7 @@ impl Diagnostic {
                 self.render_snippet(&mut output, source, span);
             }
         }
-        
+
         // Verification counterexample if present
         if let Some(trace) = &self.verification_trace {
             writeln!(output).unwrap();
@@ -114,42 +118,54 @@ impl Diagnostic {
                 writeln!(output, "           {} = {}", var.cyan(), val).unwrap();
             }
         }
-        
+
         output
     }
 
     fn render_snippet(&self, output: &mut String, source: &str, span: &Span) {
         let lines: Vec<&str> = source.lines().collect();
-        
+
         // Calculate line number width
         let line_no_width = span.line.to_string().len();
-        
+
         writeln!(output, "   {}", " ".repeat(line_no_width + 1).blue().bold()).unwrap();
-        
+
         // Show context (line before if available)
         if span.line > 1 && span.line <= lines.len() {
-            writeln!(output, "{:>width$} {} {}", 
-                     (span.line - 1).to_string().blue().bold(),
-                     "|".blue().bold(),
-                     lines[span.line - 2],
-                     width = line_no_width).unwrap();
+            writeln!(
+                output,
+                "{:>width$} {} {}",
+                (span.line - 1).to_string().blue().bold(),
+                "|".blue().bold(),
+                lines[span.line - 2],
+                width = line_no_width
+            )
+            .unwrap();
         }
-        
+
         // Show the main line
         if span.line > 0 && span.line <= lines.len() {
             let line = lines[span.line - 1];
-            writeln!(output, "{:>width$} {} {}", 
-                     span.line.to_string().blue().bold(),
-                     "|".blue().bold(),
-                     line,
-                     width = line_no_width).unwrap();
-            
+            writeln!(
+                output,
+                "{:>width$} {} {}",
+                span.line.to_string().blue().bold(),
+                "|".blue().bold(),
+                line,
+                width = line_no_width
+            )
+            .unwrap();
+
             // Show the error underline
             let prefix_len = line_no_width + 3 + span.col - 1;
             let underline = "^".repeat(span.len.min(line.len() - span.col + 1));
-            writeln!(output, "{}{}", 
-                     " ".repeat(prefix_len),
-                     underline.red().bold()).unwrap();
+            writeln!(
+                output,
+                "{}{}",
+                " ".repeat(prefix_len),
+                underline.red().bold()
+            )
+            .unwrap();
         }
     }
 
@@ -184,41 +200,61 @@ impl DiagnosticBuilder {
 
     pub fn render_all(&self, source: &str) -> String {
         let mut output = String::new();
-        
+
         for (i, diagnostic) in self.diagnostics.iter().enumerate() {
             if i > 0 {
                 writeln!(output).unwrap();
             }
             write!(output, "{}", diagnostic.render(source)).unwrap();
         }
-        
+
         // Summary
-        let error_count = self.diagnostics.iter().filter(|d| d.level == Level::Error).count();
-        let warning_count = self.diagnostics.iter().filter(|d| d.level == Level::Warning).count();
-        
+        let error_count = self
+            .diagnostics
+            .iter()
+            .filter(|d| d.level == Level::Error)
+            .count();
+        let warning_count = self
+            .diagnostics
+            .iter()
+            .filter(|d| d.level == Level::Warning)
+            .count();
+
         if error_count > 0 || warning_count > 0 {
             writeln!(output).unwrap();
             write!(output, "{}: ", "summary".bold()).unwrap();
-            
+
             if error_count > 0 {
-                write!(output, "{} {}", 
-                       error_count.to_string().red().bold(),
-                       if error_count == 1 { "error" } else { "errors" }).unwrap();
+                write!(
+                    output,
+                    "{} {}",
+                    error_count.to_string().red().bold(),
+                    if error_count == 1 { "error" } else { "errors" }
+                )
+                .unwrap();
             }
-            
+
             if error_count > 0 && warning_count > 0 {
                 write!(output, ", ").unwrap();
             }
-            
+
             if warning_count > 0 {
-                write!(output, "{} {}", 
-                       warning_count.to_string().yellow().bold(),
-                       if warning_count == 1 { "warning" } else { "warnings" }).unwrap();
+                write!(
+                    output,
+                    "{} {}",
+                    warning_count.to_string().yellow().bold(),
+                    if warning_count == 1 {
+                        "warning"
+                    } else {
+                        "warnings"
+                    }
+                )
+                .unwrap();
             }
-            
+
             writeln!(output).unwrap();
         }
-        
+
         output
     }
 }
@@ -228,16 +264,16 @@ impl DiagnosticBuilder {
 pub enum CompileError {
     #[error("Parse error: {0}")]
     ParseError(String),
-    
+
     #[error("Type error: {0}")]
     TypeError(String),
-    
+
     #[error("Ownership error: {0}")]
     OwnershipError(String),
-    
+
     #[error("Verification error: {0}")]
     VerificationError(String),
-    
+
     #[error("Code generation error: {0}")]
     CodeGenError(String),
 }
@@ -249,10 +285,8 @@ impl CompileError {
                 Diagnostic::error(span, format!("parse error: {}", msg))
                     .with_note("expected valid Liquid Haskell syntax")
             }
-            CompileError::TypeError(msg) => {
-                Diagnostic::error(span, format!("type error: {}", msg))
-                    .with_note("types must match exactly")
-            }
+            CompileError::TypeError(msg) => Diagnostic::error(span, format!("type error: {}", msg))
+                .with_note("types must match exactly"),
             CompileError::OwnershipError(msg) => {
                 Diagnostic::error(span, format!("ownership error: {}", msg))
                     .with_note("ensure proper ownership and borrowing")
@@ -286,7 +320,7 @@ main = add 1 "hello""#;
                 col: 14,
                 len: 7,
             },
-            "type mismatch: expected Int, found String"
+            "type mismatch: expected Int, found String",
         )
         .with_note("strings cannot be used where integers are expected")
         .with_span_note(
@@ -296,11 +330,11 @@ main = add 1 "hello""#;
                 col: 15,
                 len: 3,
             },
-            "function expects Int here"
+            "function expects Int here",
         );
 
         let rendered = diag.render(source);
-        
+
         assert!(rendered.contains("type mismatch"));
         assert!(rendered.contains("test.rhl:4:14"));
         assert!(rendered.contains("^^^^^^^")); // Error underline

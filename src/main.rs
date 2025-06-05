@@ -1,10 +1,10 @@
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
-use rascal_light::*;
-use rascal_light::smt::VerificationResult;
-use std::path::PathBuf;
-use std::fs;
-use anyhow::{Result, Context};
 use colored::Colorize;
+use rascal_light::smt::VerificationResult;
+use rascal_light::*;
+use std::fs;
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "rascal-light")]
@@ -21,34 +21,34 @@ enum Commands {
     Transpile {
         /// Input Liquid Haskell file
         input: PathBuf,
-        
+
         /// Output Rust file (defaults to input.rs)
         #[arg(short, long)]
         output: Option<PathBuf>,
-        
+
         /// Verification level
         #[arg(short, long, value_enum, default_value = "basic")]
         verify: VerifyLevel,
-        
+
         /// Verification backend
         #[arg(short, long, default_value = "prusti")]
         backend: String,
-        
+
         /// Disable optimizations
         #[arg(long)]
         no_optimize: bool,
     },
-    
+
     /// Verify a Liquid Haskell file without generating code
     Verify {
         /// Input Liquid Haskell file
         input: PathBuf,
-        
+
         /// Verification level
         #[arg(short, long, value_enum, default_value = "refinement")]
         level: VerifyLevel,
     },
-    
+
     /// Check syntax without generating code
     Check {
         /// Input Liquid Haskell file
@@ -81,11 +81,17 @@ impl From<VerifyLevel> for VerificationLevel {
 
 fn main() -> Result<()> {
     env_logger::init();
-    
+
     let cli = Cli::parse();
-    
+
     match cli.command {
-        Commands::Transpile { input, output, verify, backend, no_optimize } => {
+        Commands::Transpile {
+            input,
+            output,
+            verify,
+            backend,
+            no_optimize,
+        } => {
             transpile_command(input, output, verify.into(), backend, !no_optimize)?;
         }
         Commands::Verify { input, level } => {
@@ -95,7 +101,7 @@ fn main() -> Result<()> {
             check_command(input)?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -107,18 +113,17 @@ fn transpile_command(
     optimize: bool,
 ) -> Result<()> {
     println!("{} {}", "Transpiling".green().bold(), input.display());
-    
+
     let options = CompilerOptions {
         verify,
         optimize,
         backend,
         output_path: output.as_ref().map(|p| p.to_string_lossy().to_string()),
     };
-    
+
     let mut compiler = Compiler::new(options);
-    let source = fs::read_to_string(&input)
-        .context("Failed to read input file")?;
-    
+    let source = fs::read_to_string(&input).context("Failed to read input file")?;
+
     match compiler.compile_string(&source, input.to_string_lossy().to_string()) {
         Ok(rust_code) => {
             // Determine output path
@@ -127,13 +132,16 @@ fn transpile_command(
                 path.set_extension("rs");
                 path
             });
-            
+
             // Write output
-            fs::write(&output_path, rust_code)
-                .context("Failed to write output file")?;
-            
-            println!("{} Written to {}", "Success!".green().bold(), output_path.display());
-            
+            fs::write(&output_path, rust_code).context("Failed to write output file")?;
+
+            println!(
+                "{} Written to {}",
+                "Success!".green().bold(),
+                output_path.display()
+            );
+
             // Print any warnings
             if !compiler.get_diagnostics().has_errors() {
                 let diagnostics = compiler.get_diagnostics().render_all(&source);
@@ -141,46 +149,46 @@ fn transpile_command(
                     println!("\n{}", diagnostics);
                 }
             }
-            
+
             Ok(())
         }
         Err(e) => {
             eprintln!("{} {}", "Error:".red().bold(), e);
-            
+
             // Print detailed diagnostics
             let diagnostics = compiler.get_diagnostics().render_all(&source);
             if !diagnostics.is_empty() {
                 eprintln!("\n{}", diagnostics);
             }
-            
+
             std::process::exit(1);
         }
     }
 }
 
 fn verify_command(input: PathBuf, level: VerificationLevel) -> Result<()> {
-    println!("{} {} with level {:?}", 
-             "Verifying".blue().bold(), 
-             input.display(),
-             level);
-    
+    println!(
+        "{} {} with level {:?}",
+        "Verifying".blue().bold(),
+        input.display(),
+        level
+    );
+
     let options = CompilerOptions {
         verify: level,
         optimize: false,
         backend: "prusti".to_string(),
         output_path: None,
     };
-    
+
     let mut compiler = Compiler::new(options);
-    let source = fs::read_to_string(&input)
-        .context("Failed to read input file")?;
-    
+    let source = fs::read_to_string(&input).context("Failed to read input file")?;
+
     // Parse and verify without generating code
-    let functions = parse(&source)
-        .context("Failed to parse Liquid Haskell")?;
-    
+    let functions = parse(&source).context("Failed to parse Liquid Haskell")?;
+
     let mut all_verified = true;
-    
+
     for func in functions {
         match verify_hir(&func) {
             Ok(VerificationResult::Verified) => {
@@ -216,34 +224,36 @@ fn verify_command(input: PathBuf, level: VerificationLevel) -> Result<()> {
             }
         }
     }
-    
+
     if all_verified {
         println!("\n{} All functions verified!", "Success!".green().bold());
     } else {
-        println!("\n{} Some functions failed verification", "Failed!".red().bold());
+        println!(
+            "\n{} Some functions failed verification",
+            "Failed!".red().bold()
+        );
         std::process::exit(1);
     }
-    
+
     Ok(())
 }
 
 fn check_command(input: PathBuf) -> Result<()> {
     println!("{} {}", "Checking".cyan().bold(), input.display());
-    
-    let source = fs::read_to_string(&input)
-        .context("Failed to read input file")?;
-    
+
+    let source = fs::read_to_string(&input).context("Failed to read input file")?;
+
     match parse(&source) {
         Ok(functions) => {
             println!("{} Syntax is valid", "✓".green());
             println!("  Found {} function(s)", functions.len());
-            
+
             for func in functions {
                 if let HIR::Function { name, params, .. } = func {
                     println!("  - {} ({} params)", name.0, params.len());
                 }
             }
-            
+
             Ok(())
         }
         Err(e) => {

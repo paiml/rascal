@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt::Write;
 use crate::hir::*;
 use crate::ownership::OwnershipMap;
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
+use std::collections::{HashMap, HashSet};
+use std::fmt::Write;
 
 pub struct CodeGenerator {
     indent_level: usize,
@@ -30,9 +30,14 @@ impl CodeGenerator {
 
     pub fn generate_rust(&mut self, hir: &HIR, ownership: &OwnershipMap) -> Result<String> {
         match hir {
-            HIR::Function { name, params, body, pre, post, decreases } => {
-                self.generate_function(name, params, body, pre, post, decreases, ownership)
-            }
+            HIR::Function {
+                name,
+                params,
+                body,
+                pre,
+                post,
+                decreases,
+            } => self.generate_function(name, params, body, pre, post, decreases, ownership),
             _ => Err(anyhow!("Can only generate code for functions at top level")),
         }
     }
@@ -53,13 +58,28 @@ impl CodeGenerator {
         if !pre.is_empty() || !post.is_empty() || decreases.is_some() {
             writeln!(out, "{}// Verification conditions:", self.indent())?;
             for pred in pre {
-                writeln!(out, "{}// @requires {}", self.indent(), self.format_predicate(pred))?;
+                writeln!(
+                    out,
+                    "{}// @requires {}",
+                    self.indent(),
+                    self.format_predicate(pred)
+                )?;
             }
             for pred in post {
-                writeln!(out, "{}// @ensures {}", self.indent(), self.format_predicate(pred))?;
+                writeln!(
+                    out,
+                    "{}// @ensures {}",
+                    self.indent(),
+                    self.format_predicate(pred)
+                )?;
             }
             if let Some(measure) = decreases {
-                writeln!(out, "{}// @decreases {}", self.indent(), self.format_measure(measure))?;
+                writeln!(
+                    out,
+                    "{}// @decreases {}",
+                    self.indent(),
+                    self.format_measure(measure)
+                )?;
             }
             writeln!(out)?;
         }
@@ -79,7 +99,10 @@ impl CodeGenerator {
             if i > 0 {
                 write!(out, ", ")?;
             }
-            let ownership_kind = ownership.get(param).cloned().unwrap_or(OwnershipKind::Owned);
+            let ownership_kind = ownership
+                .get(param)
+                .cloned()
+                .unwrap_or(OwnershipKind::Owned);
             write!(out, "{}: {}", param.0, ty.to_rust(&ownership_kind))?;
         }
         write!(out, ")")?;
@@ -102,19 +125,25 @@ impl CodeGenerator {
     fn generate_expr(&mut self, expr: &HIR, ownership: &OwnershipMap) -> Result<String> {
         match expr {
             HIR::Var(sym) => Ok(format!("{}{}\n", self.indent(), sym.0)),
-            
+
             HIR::Lit(lit) => Ok(format!("{}{}\n", self.indent(), self.format_literal(lit))),
-            
-            HIR::Let { name, ty, value, body, linear } => {
+
+            HIR::Let {
+                name,
+                ty,
+                value,
+                body,
+                linear,
+            } => {
                 let mut out = String::new();
                 let ownership_kind = ownership.get(name).cloned().unwrap_or(OwnershipKind::Owned);
-                
+
                 write!(out, "{}let ", self.indent())?;
                 if !matches!(ownership_kind, OwnershipKind::MutBorrowed) {
                     write!(out, "mut ")?;
                 }
                 write!(out, "{}: {} = ", name.0, ty.to_rust(&ownership_kind))?;
-                
+
                 // Generate value inline if simple, otherwise on new line
                 let value_str = self.generate_expr_inline(value, ownership)?;
                 if value_str.lines().count() == 1 && value_str.len() < 60 {
@@ -126,15 +155,15 @@ impl CodeGenerator {
                     self.indent_level -= 1;
                     writeln!(out, "{};", self.indent())?;
                 }
-                
+
                 write!(out, "{}", self.generate_expr(body, ownership)?)?;
                 Ok(out)
             }
-            
+
             HIR::App { func, args } => {
                 let mut out = String::new();
                 let func_str = self.generate_expr_inline(func, ownership)?;
-                
+
                 write!(out, "{}{}(", self.indent(), func_str.trim())?;
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 {
@@ -146,19 +175,22 @@ impl CodeGenerator {
                 writeln!(out, ")")?;
                 Ok(out)
             }
-            
+
             HIR::Lambda { params, body } => {
                 let mut out = String::new();
                 write!(out, "{}|", self.indent())?;
-                
+
                 for (i, (param, ty)) in params.iter().enumerate() {
                     if i > 0 {
                         write!(out, ", ")?;
                     }
-                    let ownership_kind = ownership.get(param).cloned().unwrap_or(OwnershipKind::Owned);
+                    let ownership_kind = ownership
+                        .get(param)
+                        .cloned()
+                        .unwrap_or(OwnershipKind::Owned);
                     write!(out, "{}: {}", param.0, ty.to_rust(&ownership_kind))?;
                 }
-                
+
                 writeln!(out, "| {{")?;
                 self.indent_level += 1;
                 write!(out, "{}", self.generate_expr(body, ownership)?)?;
@@ -166,16 +198,18 @@ impl CodeGenerator {
                 writeln!(out, "{}}}", self.indent())?;
                 Ok(out)
             }
-            
-            HIR::Match { scrutinee, arms, .. } => {
+
+            HIR::Match {
+                scrutinee, arms, ..
+            } => {
                 let mut out = String::new();
                 let scrutinee_str = self.generate_expr_inline(scrutinee, ownership)?;
                 writeln!(out, "{}match {} {{", self.indent(), scrutinee_str.trim())?;
-                
+
                 self.indent_level += 1;
                 for (pattern, expr) in arms {
                     write!(out, "{}{} => ", self.indent(), self.format_pattern(pattern))?;
-                    
+
                     // Check if expression is simple enough for inline
                     let expr_str = self.generate_expr_inline(expr, ownership)?;
                     if expr_str.lines().count() == 1 && expr_str.len() < 40 {
@@ -189,26 +223,27 @@ impl CodeGenerator {
                     }
                 }
                 self.indent_level -= 1;
-                
+
                 writeln!(out, "{}}}", self.indent())?;
                 Ok(out)
             }
-            
+
             HIR::BinOp { op, lhs, rhs } => {
                 let lhs_str = self.generate_expr_inline(lhs, ownership)?;
                 let rhs_str = self.generate_expr_inline(rhs, ownership)?;
-                Ok(format!("{}{} {} {}\n", 
-                    self.indent(), 
-                    lhs_str.trim(), 
-                    self.format_binop(op), 
+                Ok(format!(
+                    "{}{} {} {}\n",
+                    self.indent(),
+                    lhs_str.trim(),
+                    self.format_binop(op),
                     rhs_str.trim()
                 ))
             }
-            
+
             HIR::Constructor { name, args } => {
                 let mut out = String::new();
                 write!(out, "{}{}", self.indent(), name.0)?;
-                
+
                 if !args.is_empty() {
                     write!(out, "(")?;
                     for (i, arg) in args.iter().enumerate() {
@@ -223,7 +258,7 @@ impl CodeGenerator {
                 writeln!(out)?;
                 Ok(out)
             }
-            
+
             HIR::Annot { expr, ty } => {
                 let mut out = String::new();
                 write!(out, "{}(", self.indent())?;
@@ -232,7 +267,7 @@ impl CodeGenerator {
                 writeln!(out, " as {})", ty.base.to_rust_str())?;
                 Ok(out)
             }
-            
+
             _ => Err(anyhow!("Code generation not implemented for: {:?}", expr)),
         }
     }
@@ -263,9 +298,11 @@ impl CodeGenerator {
                 if patterns.is_empty() {
                     name.0.clone()
                 } else {
-                    format!("{}({})", 
-                        name.0, 
-                        patterns.iter()
+                    format!(
+                        "{}({})",
+                        name.0,
+                        patterns
+                            .iter()
                             .map(|p| self.format_pattern(p))
                             .collect::<Vec<_>>()
                             .join(", ")
@@ -298,9 +335,11 @@ impl CodeGenerator {
     }
 
     fn format_predicate(&self, pred: &Predicate) -> String {
-        format!("{}({})", 
+        format!(
+            "{}({})",
             pred.name.0,
-            pred.args.iter()
+            pred.args
+                .iter()
                 .map(|arg| self.format_smt_expr(arg))
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -312,7 +351,8 @@ impl CodeGenerator {
             SMTExpr::Var(sym) => sym.0.clone(),
             SMTExpr::Const(lit) => self.format_literal(lit),
             SMTExpr::Comparison { op, lhs, rhs } => {
-                format!("{} {} {}", 
+                format!(
+                    "{} {} {}",
                     self.format_smt_expr(lhs),
                     self.format_comp_op(op),
                     self.format_smt_expr(rhs)
@@ -370,12 +410,17 @@ impl CodeGenerator {
             HIR::Lit(Literal::Bool(_)) => "bool".to_string(),
             HIR::Lit(Literal::String(_)) => "String".to_string(),
             HIR::Lit(Literal::Unit) => "()".to_string(),
-            HIR::BinOp { op, .. } => {
-                match op {
-                    BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => "i32".to_string(),
-                    BinOp::And | BinOp::Or | BinOp::Lt | BinOp::Leq | BinOp::Gt | BinOp::Geq | BinOp::Eq | BinOp::Neq => "bool".to_string(),
-                }
-            }
+            HIR::BinOp { op, .. } => match op {
+                BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => "i32".to_string(),
+                BinOp::And
+                | BinOp::Or
+                | BinOp::Lt
+                | BinOp::Leq
+                | BinOp::Gt
+                | BinOp::Geq
+                | BinOp::Eq
+                | BinOp::Neq => "bool".to_string(),
+            },
             _ => "()".to_string(), // TODO: Proper type inference
         }
     }

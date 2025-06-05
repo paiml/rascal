@@ -1,15 +1,15 @@
+use crate::hir::*;
+use anyhow::{anyhow, Result};
 use nom::{
-    IResult,
     branch::alt,
     bytes::complete::{tag, take_until},
-    character::complete::{alpha1, alphanumeric1, multispace0, multispace1, digit1, char},
+    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0, multispace1},
     combinator::{map, opt, recognize, value},
     multi::{many0, many1, separated_list1},
-    sequence::{delimited, tuple, pair},
+    sequence::{delimited, pair, tuple},
+    IResult,
 };
 use std::collections::HashMap;
-use crate::hir::*;
-use anyhow::{Result, anyhow};
 
 pub struct Parser {
     type_aliases: HashMap<String, RefinedType>,
@@ -56,7 +56,10 @@ impl Parser {
         if let Ok((rest, func)) = self.parse_function(input) {
             return Ok((rest, Some(func)));
         }
-        Err(nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Alt)))
+        Err(nom::Err::Error(nom::error::Error::new(
+            input,
+            nom::error::ErrorKind::Alt,
+        )))
     }
 
     // Parse refinement type annotation: {-@ type Nat = {v:Int | 0 <= v} @-}
@@ -96,7 +99,7 @@ impl Parser {
             Measure {
                 expr: SMTExpr::Var(Symbol(name.to_string())),
                 decreasing: true,
-            }
+            },
         );
         Ok((input, ()))
     }
@@ -104,20 +107,20 @@ impl Parser {
     // Parse function with optional refinement type
     fn parse_function<'a>(&mut self, input: &'a str) -> IResult<&'a str, HIR> {
         let (input, _) = multispace0(input)?;
-        
+
         // Optional refinement type annotation
         let (input, refinement_sig) = opt(|i| self.parse_refinement_signature(i))(input)?;
-        
+
         // Function name
         let (input, name) = parse_identifier(input)?;
         let (input, _) = multispace0(input)?;
         let (input, _) = tag("::")(input)?;
         let (input, _) = multispace0(input)?;
-        
+
         // Type signature
         let (input, type_sig) = self.parse_type_signature(input)?;
         let (input, _) = multispace0(input)?;
-        
+
         // Function definition
         let (input, _) = tag(name)(input)?;
         let (input, _) = multispace1(input)?;
@@ -130,7 +133,8 @@ impl Parser {
 
         // Build parameter list with types
         let param_types = self.extract_param_types(&type_sig, params.len());
-        let params_with_types: Vec<(Symbol, RefinedType)> = params.iter()
+        let params_with_types: Vec<(Symbol, RefinedType)> = params
+            .iter()
             .zip(param_types.iter())
             .map(|(name, ty)| (Symbol(name.to_string()), ty.clone()))
             .collect();
@@ -142,14 +146,17 @@ impl Parser {
             (vec![], vec![])
         };
 
-        Ok((input, HIR::Function {
-            name: Symbol(name.to_string()),
-            params: params_with_types,
-            body: Box::new(body),
-            pre,
-            post,
-            decreases: None,
-        }))
+        Ok((
+            input,
+            HIR::Function {
+                name: Symbol(name.to_string()),
+                params: params_with_types,
+                body: Box::new(body),
+                pre,
+                post,
+                decreases: None,
+            },
+        ))
     }
 
     // Parse refinement signature: {-@ add :: Nat -> Nat -> Nat @-}
@@ -164,10 +171,9 @@ impl Parser {
 
     // Parse type signature: Int -> Int -> Int
     fn parse_type_signature<'a>(&mut self, input: &'a str) -> IResult<&'a str, Vec<RefinedType>> {
-        separated_list1(
-            tuple((multispace0, tag("->"), multispace0)),
-            |i| self.parse_base_type(i)
-        )(input)
+        separated_list1(tuple((multispace0, tag("->"), multispace0)), |i| {
+            self.parse_base_type(i)
+        })(input)
     }
 
     // Parse base type
@@ -227,18 +233,23 @@ impl Parser {
         let (input, _) = multispace0(input)?;
         let (input, rhs) = self.parse_smt_atom(input)?;
 
-        Ok((input, SMTExpr::Comparison {
-            op,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-        }))
+        Ok((
+            input,
+            SMTExpr::Comparison {
+                op,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+            },
+        ))
     }
 
     // Parse SMT atom
     fn parse_smt_atom<'a>(&mut self, input: &'a str) -> IResult<&'a str, SMTExpr> {
         alt((
             map(parse_integer, |n| SMTExpr::Const(Literal::Int(n))),
-            map(parse_identifier, |name| SMTExpr::Var(Symbol(name.to_string()))),
+            map(parse_identifier, |name| {
+                SMTExpr::Var(Symbol(name.to_string()))
+            }),
         ))(input)
     }
 
@@ -246,17 +257,18 @@ impl Parser {
     fn parse_expr<'a>(&mut self, input: &'a str) -> IResult<&'a str, HIR> {
         self.parse_additive(input)
     }
-    
+
     // Parse additive operators (+, -)
     fn parse_additive<'a>(&mut self, input: &'a str) -> IResult<&'a str, HIR> {
         let (mut input, mut left) = self.parse_primary(input)?;
-        
+
         loop {
             let (rest, _) = multispace0(input)?;
             if let Ok((rest2, op)) = alt::<_, _, nom::error::Error<&str>, _>((
                 value(BinOp::Add, char::<_, nom::error::Error<&str>>('+')),
                 value(BinOp::Sub, char::<_, nom::error::Error<&str>>('-')),
-            ))(rest) {
+            ))(rest)
+            {
                 let (rest3, _) = multispace0(rest2)?;
                 let (rest4, right) = self.parse_primary(rest3)?;
                 left = HIR::BinOp {
@@ -269,10 +281,10 @@ impl Parser {
                 break;
             }
         }
-        
+
         Ok((input, left))
     }
-    
+
     // Parse primary expressions
     fn parse_primary<'a>(&mut self, input: &'a str) -> IResult<&'a str, HIR> {
         self.parse_match_or_app(input)
@@ -297,14 +309,17 @@ impl Parser {
         let (input, arms) = many1(|i| self.parse_match_arm(i))(input)?;
 
         let patterns = arms.iter().map(|(p, _)| p.clone()).collect();
-        Ok((input, HIR::Match {
-            scrutinee: Box::new(scrutinee),
-            arms,
-            exhaustive: ExhaustivenessProof {
-                patterns,
-                coverage: CoverageProof::Complete, // TODO: Actual analysis
+        Ok((
+            input,
+            HIR::Match {
+                scrutinee: Box::new(scrutinee),
+                arms,
+                exhaustive: ExhaustivenessProof {
+                    patterns,
+                    coverage: CoverageProof::Complete, // TODO: Actual analysis
+                },
             },
-        }))
+        ))
     }
 
     // Parse match arm
@@ -335,17 +350,20 @@ impl Parser {
     // Parse application
     fn parse_application<'a>(&mut self, input: &'a str) -> IResult<&'a str, HIR> {
         let (input, atoms) = separated_list1(multispace1, |i| self.parse_atom(i))(input)?;
-        
+
         if atoms.len() == 1 {
             Ok((input, atoms.into_iter().next().unwrap()))
         } else {
             let mut iter = atoms.into_iter();
             let func = iter.next().unwrap();
             let args = iter.collect();
-            Ok((input, HIR::App {
-                func: Box::new(func),
-                args,
-            }))
+            Ok((
+                input,
+                HIR::App {
+                    func: Box::new(func),
+                    args,
+                },
+            ))
         }
     }
 
@@ -374,7 +392,10 @@ impl Parser {
         if let Ok((rest, expr)) = delimited(char('('), |i| self.parse_expr(i), char(')'))(input) {
             return Ok((rest, expr));
         }
-        Err(nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Alt)))
+        Err(nom::Err::Error(nom::error::Error::new(
+            input,
+            nom::error::ErrorKind::Alt,
+        )))
     }
 
     // Parse binary operation
@@ -391,15 +412,22 @@ impl Parser {
         let (input, _) = multispace0(input)?;
         let (input, rhs) = self.parse_atom(input)?;
 
-        Ok((input, HIR::BinOp {
-            op,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-        }))
+        Ok((
+            input,
+            HIR::BinOp {
+                op,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+            },
+        ))
     }
 
     // Helper methods
-    fn extract_param_types(&self, type_sig: &[RefinedType], param_count: usize) -> Vec<RefinedType> {
+    fn extract_param_types(
+        &self,
+        type_sig: &[RefinedType],
+        param_count: usize,
+    ) -> Vec<RefinedType> {
         if type_sig.len() > param_count {
             type_sig[..param_count].to_vec()
         } else {
@@ -415,12 +443,10 @@ impl Parser {
 
 // Helper parsers
 fn parse_identifier(input: &str) -> IResult<&str, &str> {
-    recognize(
-        pair(
-            alt((alpha1, tag("_"))),
-            many0(alt((alphanumeric1, tag("_"))))
-        )
-    )(input)
+    recognize(pair(
+        alt((alpha1, tag("_"))),
+        many0(alt((alphanumeric1, tag("_")))),
+    ))(input)
 }
 
 fn parse_integer(input: &str) -> IResult<&str, i64> {
