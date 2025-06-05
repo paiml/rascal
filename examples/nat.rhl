@@ -1,0 +1,9 @@
+{-@ type Nat = {v:Int | 0 <= v} @-}
+
+{-@ add :: Nat -> Nat -> Nat @-}
+add :: Int -> Int -> Int
+add x y = x + y
+
+{-@ sub :: Nat -> Nat -> Nat @-}
+sub :: Int -> Int -> Int
+sub x y = x - y

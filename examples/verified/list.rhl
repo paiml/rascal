@@ -1,0 +1,35 @@
+{-@ LIQUID "--no-termination" @-}
+
+module List where
+
+{-@ measure len @-}
+{-@ len :: [a] -> Nat @-}
+
+{-@ type List a N = {v:[a] | len v = N} @-}
+{-@ type NEList a = {v:[a] | len v > 0} @-}
+
+{-@ append :: xs:[a] -> ys:[a] -> {v:[a] | len v = len xs + len ys} @-}
+append :: [a] -> [a] -> [a]
+append [] ys = ys
+append (x:xs) ys = x : append xs ys
+
+{-@ reverse :: xs:[a] -> {v:[a] | len v = len xs} @-}
+reverse :: [a] -> [a]
+reverse xs = revHelper xs []
+
+{-@ revHelper :: xs:[a] -> acc:[a] -> {v:[a] | len v = len xs + len acc} @-}
+revHelper :: [a] -> [a] -> [a]
+revHelper [] acc = acc
+revHelper (x:xs) acc = revHelper xs (x:acc)
+
+{-@ map :: (a -> b) -> xs:[a] -> {v:[b] | len v = len xs} @-}
+map :: (a -> b) -> [a] -> [b]
+map _ [] = []
+map f (x:xs) = f x : map f xs
+
+{-@ filter :: (a -> Bool) -> [a] -> [a] @-}
+filter :: (a -> Bool) -> [a] -> [a]
+filter _ [] = []
+filter p (x:xs)
+  | p x       = x : filter p xs
+  | otherwise = filter p xs

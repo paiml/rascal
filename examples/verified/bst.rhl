@@ -1,0 +1,36 @@
+{-@ LIQUID "--no-termination" @-}
+
+module BST where
+
+{-@ measure size @-}
+{-@ size :: BST a -> Nat @-}
+
+{-@ measure height @-}
+{-@ height :: BST a -> Nat @-}
+
+data BST a = Empty | Node a (BST a) (BST a)
+
+{-@ data BST a = Empty 
+               | Node { val :: a, left :: BST a, right :: BST a } @-}
+
+{-@ type BST a = {v:BST a | height v >= 0} @-}
+
+{-@ empty :: BST a @-}
+empty :: BST a
+empty = Empty
+
+{-@ insert :: Ord a => a -> BST a -> BST a @-}
+insert :: Ord a => a -> BST a -> BST a
+insert x Empty = Node x Empty Empty
+insert x (Node y l r)
+  | x < y     = Node y (insert x l) r
+  | x > y     = Node y l (insert x r)
+  | otherwise = Node y l r
+
+{-@ lookup :: Ord a => a -> BST a -> Bool @-}
+lookup :: Ord a => a -> BST a -> Bool
+lookup _ Empty = False
+lookup x (Node y l r)
+  | x < y     = lookup x l
+  | x > y     = lookup x r
+  | otherwise = True
