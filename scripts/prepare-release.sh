@@ -39,14 +39,14 @@ echo "Following 自働化 (Jidoka) - Never ship unverified code"
 
 # Format check
 echo "  Checking code formatting..."
-if ! cargo fmt --all -- --check; then
+if ! cargo +stable fmt --all -- --check; then
     echo "❌ Code not formatted. Run: cargo fmt --all"
     exit 1
 fi
 
 # Clippy check
 echo "  Running clippy..."
-if ! cargo clippy --all-targets --all-features -- -D warnings; then
+if ! cargo +stable clippy --all-targets --all-features -- -D warnings; then
     echo "❌ Clippy warnings found. Please fix."
     exit 1
 fi
@@ -57,28 +57,28 @@ if ! command -v cargo-audit >/dev/null 2>&1; then
     echo "Installing cargo-audit..."
     cargo install cargo-audit
 fi
-if ! cargo audit; then
+if ! cargo +stable audit; then
     echo "❌ Security vulnerabilities found. Please address."
     exit 1
 fi
 
 # Build check
 echo "  Building release..."
-if ! cargo build --release --all-features; then
+if ! cargo +stable build --release --all-features; then
     echo "❌ Release build failed."
     exit 1
 fi
 
 # Test suite
 echo "  Running test suite..."
-if ! cargo test --release --all-features; then
+if ! cargo +stable test --release --all-features; then
     echo "❌ Tests failed."
     exit 1
 fi
 
 # Integration tests
 echo "  Running integration tests..."
-if ! cargo test --test integration_tests --release; then
+if ! cargo +stable test --test integration_tests --release; then
     echo "❌ Integration tests failed."
     exit 1
 fi
@@ -116,7 +116,7 @@ echo "⚡ Step 3: Running performance benchmarks..."
 echo "Following 現地現物 (Genchi Genbutsu) - Direct observation of performance"
 
 echo "  Running benchmarks..."
-cargo bench --bench parser_bench > benchmark_results.txt 2>&1 || true
+cargo +stable bench --bench parser_bench > benchmark_results.txt 2>&1 || true
 
 # Check if transpilation is under 10μs target
 if grep -q "transpilation.*time:" benchmark_results.txt; then
@@ -159,7 +159,7 @@ fi
 # 5. Final build with new version
 echo ""
 echo "🔨 Step 5: Final build with updated version..."
-if ! cargo build --release; then
+if ! cargo +stable build --release; then
     echo "❌ Final build failed with new version."
     mv Cargo.toml.backup Cargo.toml
     exit 1
@@ -182,7 +182,7 @@ BINARY_SIZE=$(ls -lh target/release/rascal-light | awk '{print $5}')
 echo "    Release binary: $BINARY_SIZE"
 
 echo "  Test Count:"
-TEST_COUNT=$(cargo test --list 2>/dev/null | grep -c "test " || echo "unknown")
+TEST_COUNT=$(cargo +stable test --list 2>/dev/null | grep -c "test " || echo "unknown")
 echo "    Total tests: $TEST_COUNT"
 
 # 7. Generate release summary
