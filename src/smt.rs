@@ -87,15 +87,8 @@ impl<'ctx> SMTContext<'ctx> {
                 self.vars = saved_vars;
 
                 // Create quantified formula
-                let ast_vars: Vec<&dyn Ast> = bound_vars.iter()
-                    .map(|v| v as &dyn Ast)
-                    .collect();
-                forall_const(
-                    self.ctx,
-                    &ast_vars,
-                    &[],
-                    &body_enc,
-                )
+                let ast_vars: Vec<&dyn Ast> = bound_vars.iter().map(|v| v as &dyn Ast).collect();
+                forall_const(self.ctx, &ast_vars, &[], &body_enc)
             }
             SMTExpr::Exists(vars, body) => {
                 // Similar to Forall but with exists
@@ -113,15 +106,8 @@ impl<'ctx> SMTContext<'ctx> {
                 let body_enc = self.encode_smt_expr(body);
                 self.vars = saved_vars;
 
-                let ast_vars: Vec<&dyn Ast> = bound_vars.iter()
-                    .map(|v| v as &dyn Ast)
-                    .collect();
-                exists_const(
-                    self.ctx,
-                    &ast_vars,
-                    &[],
-                    &body_enc,
-                )
+                let ast_vars: Vec<&dyn Ast> = bound_vars.iter().map(|v| v as &dyn Ast).collect();
+                exists_const(self.ctx, &ast_vars, &[], &body_enc)
             }
             _ => Bool::from_bool(self.ctx, true), // TODO: Handle other cases
         }
@@ -256,9 +242,7 @@ impl<'ctx> SMTContext<'ctx> {
                     _ => Bool::from_bool(self.ctx, true), // TODO: Handle arithmetic ops
                 }
             }
-            HIR::Let {
-                body, ..
-            } => {
+            HIR::Let { body, .. } => {
                 // Evaluate value and bind to name
                 // For now, just process body
                 self.encode_hir(body)
